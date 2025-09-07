@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Web ADB Mini</title>
+    <style>
+      :root {
+        --bg: #f7f8fb;
+        --fg: #0f172a;
+        --muted: #64748b;
+        --panel: #ffffff;
+        --panel-border: #e5e7eb;
+        --btn: #0ea5e9;
+        --btn-fg: #ffffff;
+        --btn-muted: #e2e8f0;
+        --btn-muted-fg: #0f172a;
+        --ok: #16a34a;
+        --danger: #dc2626;
+        --code-bg: #0b1020;
+        --code-fg: #c7d2fe;
+        --card-shadow: 0 10px 24px rgba(2, 6, 23, 0.08);
+      }
+      [data-theme="dark"] {
+        --bg: #0b1020;
+        --fg: #e5e7eb;
+        --muted: #94a3b8;
+        --panel: #0f172a;
+        --panel-border: #1e293b;
+        --btn: #22d3ee;
+        --btn-fg: #0b1020;
+        --btn-muted: #1f2937;
+        --btn-muted-fg: #e5e7eb;
+        --ok: #22c55e;
+        --danger: #ef4444;
+        --code-bg: #020617;
+        --code-fg: #a5b4fc;
+        --card-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: var(--bg); color: var(--fg);
+      }
+
+      /* Layout */
+      .topbar {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; margin-bottom: 16px;
+      }
+      .title { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+      .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+      @media (min-width: 960px) { .grid { grid-template-columns: 1fr 1fr; } }
+      .span-2 { grid-column: 1 / -1; }
+
+      /* Cards */
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+      }
+      .card h3 {
+        margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--panel-border);
+        font-size: 14px; font-weight: 700;
+      }
+      .card .body { padding: 12px 14px; }
+      .card.collapsed .body {
+        display: none;
+      }
+      .card h3 {
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        cursor: pointer;
+      }
+      .toggle-btn {
+        font-size: 12px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--muted);
+      }
+      /* Controls */
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      button {
+        appearance: none; border: 0; border-radius: 10px;
+        padding: 8px 12px; font-weight: 600; cursor: pointer;
+        background: var(--btn-muted); color: var(--btn-muted-fg);
+      }
+      button.primary { background: var(--btn); color: var(--btn-fg); }
+      button.ok { background: var(--ok); color: #fff; }
+      button.danger { background: var(--danger); color: #fff; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      input[type="text"], input[type="file"] {
+        background: transparent; color: var(--fg);
+        border: 1px solid var(--panel-border); border-radius: 10px;
+        padding: 8px 10px; min-width: 220px;
+      }
+      .status {
+        display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted);
+      }
+      .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--panel); }
+      .dot.ok { background: var(--ok); }
+
+      /* File list */
+      #fsList {
+        list-style: none; padding: 8px; margin: 0;
+        border: 1px solid var(--panel-border); border-radius: 10px;
+        max-height: 40vh; overflow: auto;
+      }
+      #fsNote { font-size: 12px; color: var(--muted); }
+
+      /* Console */
+      #log {
+        white-space: pre-wrap;
+        background: var(--code-bg); color: var(--code-fg);
+        padding: 12px; height: 50vh; overflow: auto; border-radius: 12px;
+        border: 1px solid var(--panel-border);
+      }
+
+      /* Minor helpers */
+      .stack { display: grid; gap: 8px; }
+      .right { margin-left: auto; }
+      .muted { color: var(--muted); }
+      .progress { height: 8px; accent-color: var(--btn); }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    </style>
+    <script type="module" crossorigin src="/ADB-Web-Control/assets/index-DKyYenRH.js"></script>
+  </head>
+  <body>
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="title">ADB Web Control</div>
+      <div class="toolbar">
+        <span class="status">
+          <span id="statusDot" class="dot" aria-hidden="true"></span>
+          <span id="statusText">Disconnected</span>
+        </span>
+        <button id="themeToggle" class="right">🌗 Theme</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Device Control -->
+      <section class="card">
+        <h3>
+          🔌 Device Control
+           <button class="toggle-btn">−</button>
+        </h3>
+        <div class="body stack">
+          <div class="row">
+            <button id="connect" class="ok">Connect Android (WebUSB)</button>
+            <button id="disconnect" class="danger" disabled>Disconnect</button>
+            <button id="usbdialog" disabled>Show USB dialog</button>
+            <button id="reboot" disabled>Reboot device</button>
+          </div>
+          <div class="row">
+            <span class="muted">Connection controls are primary; reboot and USB dialog stay disabled until connected.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Debugging Tools -->
+      <section class="card">
+        <h3>
+          🛠️ Debugging Tools
+          <button class="toggle-btn">−</button>
+        </h3>
+        <div class="body stack">
+          <div class="row">
+            <button id="gammaray" disabled>Start gammaray</button>
+            <button id="startLogs" disabled>Start logread -f</button>
+            <button id="stopLogs" disabled>Stop logread</button>
+          </div>
+          <div class="row"><span class="muted">Hover your cursor on buttons for browser tooltips; logs stream into the console below.</span></div>
+        </div>
+      </section>
+
+      <!-- File Management -->
+      <section class="card span-2">
+        <h3>
+          📂 File Management
+          <button class="toggle-btn">−</button>
+        </h3>
+        <div class="body stack">
+          <div class="row">
+            <input id="pick" type="file" />
+            <button id="push" class="primary" disabled>Push to /mnt/onboard/.kobo/</button>
+            <progress id="bar" class="progress" value="0" max="1" style="width:300px;"></progress>
+          </div>
+
+          <div class="row">
+            <button id="fsRefresh" disabled>Refresh</button>
+            <button id="fsUp" disabled>Up</button>
+            <input id="fsPath" type="text" value="/" style="width:420px;" />
+            <button id="fsGo" class="primary" disabled>Go</button>
+          </div>
+
+          <div id="fsNote">Tip: double-click a folder to enter; click a file to get actions.</div>
+          <ul id="fsList"></ul>
+        </div>
+      </section>
+
+      <!-- Shell Command -->
+      <section class="card span-2">
+        <h3>
+          💻 Shell Command
+          <button class="toggle-btn">−</button>
+        </h3>
+        <div class="body stack">
+          <div class="row">
+            <input id="cmd" type="text" placeholder="Enter shell command (e.g., logread -f)" style="width:420px;" />
+            <button id="runCmd" class="primary" disabled>Run</button>
+            <button id="stopCmd" disabled>Stop</button>
+          </div>
+          <pre id="log"></pre>
+        </div>
+      </section>
+    </div>
+
+    <!-- Theme toggle & initial status helper -->
+    <script>
+      (function () {
+        const root = document.documentElement;
+        const toggle = document.getElementById('themeToggle');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        // Persisted theme + system preference
+        const pref = localStorage.getItem('adb-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        root.setAttribute('data-theme', pref);
+
+        toggle?.addEventListener('click', () => {
+          const current = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', current);
+          localStorage.setItem('adb-theme', current);
+        });
+
+        // Expose small helpers so your /src/main.ts can flip the status if you want:
+        window.__adbSetStatus = function (connected) {
+          if (connected) {
+            statusDot.classList.add('ok');
+            statusText.textContent = 'Connected';
+          } else {
+            statusDot.classList.remove('ok');
+            statusText.textContent = 'Disconnected';
+          }
+        };
+      })();
+
+      document.querySelectorAll('.card h3 .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const card = btn.closest('.card');
+          card.classList.toggle('collapsed');
+          btn.textContent = card.classList.contains('collapsed') ? '+' : '−';
+        });
+      });
+    </script>
+
+    <!-- Keep your original app logic intact -->
+  </body>
+</html>
